@@ -5,6 +5,7 @@
 ## Overview
 
 ChaosBotNet is a Python-based framework showcasing how botnets—networks of compromised devices—operate. It includes three components:
+
 1. **`bot.py`**: The client-side bot that infects devices, communicates with a command-and-control (C2) server, and spreads to other systems.
 2. **`c2.py`**: The C2 server that manages bots, issues commands, and launches network attacks like DDoS.
 3. **`drop.py`**: A dropper that delivers the bot payload to a target system.
@@ -35,31 +36,87 @@ This project simulates real-world botnet techniques like encryption, stealth, pe
 
 ## Setup
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/pattty847/ChaosBotNet.git
-   cd ChaosBotNet
-   ```
+This section guides you through setting up the ChaosBotNet framework in a controlled, simulated lab environment (e.g., VirtualBox with host-only networking). Ensure all actions remain ethical and confined to your test network to avoid unintended consequences.
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Prerequisites
 
-3. Run components in a lab environment (e.g., VirtualBox):
+- **Operating System**: Windows (for bot and dropper compatibility) and optionally Linux for the C2 server.
+- **Python**: Version 3.8+ installed.
+- **Virtual Environment**: Recommended for dependency isolation.
+- **Lab Network**: Isolated network (e.g., 192.168.x.x subnet) to prevent leakage.
 
-   - Start C2:
-     ```bash
-     python c2.py
-     ```
-   - Deploy dropper:
-     ```bash
-     python drop.py
-     ```
-   - Launch bot:
-     ```bash
-     python bot.py
-     ```
+### Steps
+
+#### 1. Clone the Repository
+```bash
+git clone https://github.com/pattty847/ChaosBotNet.git
+cd ChaosBotNet
+```
+
+#### 2. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+Additional tools:
+
+- **UPX**: For executable compression (used in `comp.py`). Download from [UPX](https://upx.github.io/) and add to your PATH.
+- **PyInstaller**: For building executables.
+```bash
+pip install pyinstaller
+```
+- **PyWin32**: For Windows event log clearing.
+```bash
+pip install pywin32
+```
+
+#### 3. Build the Executable
+Use the `comp.py` script to compile the bot into a standalone executable with obfuscation and spoofing. This step enhances stealth by mimicking a legitimate Windows binary.
+```bash
+python comp.py
+```
+
+- **Output**: The executable is generated in the `dist/` directory (e.g., `dist/ChaosBot.exe`).
+- **Customization**: Edit `comp.py` to change `output_name` or `icon_path` (e.g., use a custom `svchost.ico` for masquerading).
+
+#### 4. Run Components in a Lab Environment
+Deploy the botnet components in your isolated lab environment. Use separate terminals or VMs for each component:
+
+##### Start the C2 Server
+```bash
+python c2.py
+```
+- **Notes**: Ensure Tor is installed (`pip install torpy`) and running. The onion address will be printed on startup.
+
+##### Deploy the Dropper
+```bash
+python drop.py
+```
+- **Notes**: This downloads the payload and injects it into a process (e.g., `explorer.exe`). Run on a Windows VM.
+
+##### Launch the Bot
+Run the bot directly or deploy the compiled executable:
+```bash
+python bot.py
+```
+**OR**
+```bash
+dist/ChaosBot.exe
+```
+
+- **Notes**: The bot connects to the C2 server and begins executing tasks. Use the executable for stealth testing.
+
+### Verification
+
+- Check C2 logs for bot check-ins (e.g., `Bot Bot-1 checked in`).
+- Monitor the bot’s encrypted log file (`log.enc`) in the random APPDATA folder for errors.
+- Simulate network traffic to confirm flooding or propagation (e.g., Wireshark on the lab network).
+
+### Tips for Success
+
+- **Isolation**: Configure your VM network as host-only to prevent accidental external connections.
+- **Customization**: Adjust `C2_DNS` in `bot.py` and `TARGET_SERVER` in `c2.py` to point to your lab IP addresses.
+- **Debugging**: Run with `PYTHONPATH=.` if module import errors occur.
 
 ## Usage
 
@@ -79,62 +136,37 @@ Fork this repo, submit pull requests, or open issues with ideas. Focus on educat
 
 **MIT License** — free to use for educational purposes, with no warranty.
 
-### Documentation for Very Important Functions
+## Documentation for Very Important Functions
 
-#### From `bot.py`
+### From `bot.py`
 
-1. **`real_encrypt(data)`**
-   - **What It Does**: Locks data (like secret messages) with a strong lock (AES-256 encryption) so only the bot and C2 server can read it.
-   - **How It Works**: Takes any text or data, adds padding (like stuffing a box to fit), and scrambles it using a 32-byte key and a 16-byte starting point (IV). The result is encoded into a safe format (base64).
-   - **Why It Matters**: Keeps bot commands and replies secret from snoopers, like using a secret code in a spy game.
-   - **Example**: If `data = "attack now"`, it turns into something like `U2FsdGVkX1+...`, unreadable without the key.
-   - **Contribution**: Protects communication, making the bot harder to detect or block.
+#### `real_encrypt(data)`
+- **Purpose**: Encrypts data using AES-256 to secure communication.
+- **Example**: `data = "attack now"` → Encrypted output (base64 encoded).
 
-2. **`set_persistence()`**
-   - **What It Does**: Makes sure the bot restarts every time the computer turns on.
-   - **How It Works**: Adds the bot to three places:
-     1. Windows startup list (registry).
-     2. A timed job (scheduled task).
-     3. A hidden trigger (WMI) that runs it when new programs start.
-   - **Why It Matters**: Ensures the bot stays active even if the system restarts, like a weed that keeps growing back.
-   - **Example**: After running, you’d see a random name like `KjPxQwRt` in the registry pointing to the bot’s file.
-   - **Contribution**: Keeps the botnet alive long-term, infecting more devices.
+#### `set_persistence()`
+- **Purpose**: Ensures the bot remains active after reboots.
+- **Methods**: Adds the bot to the registry, scheduled tasks, and WMI triggers.
 
-3. **`hybrid_tunnel()`**
-   - **What It Does**: Talks to the C2 server secretly using two methods: DNS (like hidden notes in domain name requests) and HTTPS (disguised web traffic).
-   - **How It Works**: Loops forever, fetching tasks via DNS or HTTPS, running them, and sending results back. It waits randomly (5-15 seconds) to look normal.
-   - **Why It Matters**: Lets the bot get orders without being caught by firewalls, like whispering in a crowded room.
-   - **Example**: It might ask `chaos.evildns.com` for a task like “flood this site” and reply with “done.”
-   - **Contribution**: Links bots to the C2 server reliably, forming the botnet’s backbone.
+#### `hybrid_tunnel()`
+- **Purpose**: Uses DNS and HTTPS for stealthy C2 communication.
 
-4. **`inject_hollow(target_path=None)`**
-   - **What It Does**: Sneaks the bot’s code into a normal program (e.g., Notepad) to hide it.
-   - **How It Works**: Starts a program in “sleep mode,” swaps its code with the bot’s, then wakes it up to run secretly.
-   - **Why It Matters**: Hides the bot from antivirus by pretending to be something harmless, like a wolf in sheep’s clothing.
-   - **Example**: Opens `notepad.exe`, replaces its memory with bot code, and runs it invisibly.
-   - **Contribution**: Boosts stealth, making the bot harder to spot.
+#### `inject_hollow(target_path=None)`
+- **Purpose**: Injects bot code into a running process to evade detection.
 
-#### From `c2.py`
+### From `c2.py`
 
-5. **`network_chaos_worker()`**
-   - **What It Does**: Attacks a target with a flood of fake traffic to overwhelm it.
-   - **How It Works**: Sends 2000 bursts of TCP, UDP, or HTTP requests per thread, using random IPs and ports. It also tells bots to join in.
-   - **Why It Matters**: Simulates a DDoS attack, showing how botnets can disrupt websites or networks.
-   - **Example**: Might flood `example.com:80` with “CHAOSCHAOS…” messages, clogging its pipes.
-   - **Contribution**: Turns the botnet into a weapon, demonstrating its power.
+#### `network_chaos_worker()`
+- **Purpose**: Launches TCP, UDP, or HTTP-based flood attacks.
 
-6. **`ChaosC2Server.handle_client(client, addr)`**
-   - **What It Does**: Listens to bots checking in or reporting tasks, then gives them new jobs.
-   - **How It Works**: Reads messages from bots (e.g., “I’m here” or “task done”), logs them, and sends encrypted tasks back via Tor.
-   - **Why It Matters**: Acts as the botnet’s brain, coordinating all bots like a puppet master.
-   - **Example**: A bot says “Bot-123 checked in”; the server replies with “Flood target” in secret code.
-   - **Contribution**: Controls the botnet, keeping it organized and active.
+#### `ChaosC2Server.handle_client(client, addr)`
+- **Purpose**: Handles bot check-ins and task assignments over Tor.
 
-#### From `drop.py`
+### From `drop.py`
 
-7. **`inject_into_process()`**
-   - **What It Does**: Plants the bot into a running program (explorer.exe) to start it quietly.
-   - **How It Works**: Finds `explorer.exe`’s ID, writes a fake “helper” file into its memory, and loads it to kick off the bot.
-   - **Why It Matters**: Delivers the bot without leaving obvious traces, like sneaking a package into someone’s bag.
-   - **Example**: Writes `helper.dll` into `explorer.exe`, which then runs `WindowsUpdate.exe`.
-   - **Contribution**: Starts the infection chain, turning a clean system into a bot.
+#### `inject_into_process()`
+- **Purpose**: Plants the bot into a running process (`explorer.exe`) to start it quietly.
+
+---
+
+This formatted version ensures readability, clear structure, and proper Markdown syntax for easy viewing on GitHub or other platforms.
